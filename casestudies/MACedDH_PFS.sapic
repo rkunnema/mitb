@@ -1,0 +1,73 @@
+theory MACedDH_PCS
+begin
+
+section{* Diffie-Hellman with MAC-in-the-Box *}
+
+/*
+ * Protocol:	MACed Diffie-Hellman
+ * Modeler: 	Robert Kunnemann
+ * Source: 	Adapted from theory SignedDH_PFS by Simon Meier, Benedikt Schmidt
+ * Date: 	Dec 2018
+ *
+ * Status: 	working
+ */
+
+builtins: diffie-hellman
+
+functions: mac/2
+
+let Initiator = 
+    let m1  = <'1', $I,$R, 'g'^ ~F_ekI>
+        m1m = mac(k,m1)
+        m2  = <'2',$I,Y>
+    in
+    lock 'setup';
+    lookup 'mitb_init' as k in
+    new ~F_ekI;
+    out(<m1,m1m>);
+    in (<m2,m2m>);
+    if m2m = mac(k,m2) then
+        event SessionKey($I,$R,Y^~F_ekI);
+        unlock 'setup'
+
+let Responder = 
+    let m1  = <'1', $I,$R, X>
+        m2  = <'2',$I,'g'^ ~F_ekR>
+        m2m = mac(k,m2)
+    in
+    lock 'setup';
+    lookup 'mitb_resp' as k in
+    new ~F_ekR;
+    in(<m1,m1m>);
+    if m1m = mac(k,m1) then
+        out(<m2,m2m>);
+        event SessionKey($I,$R,X^~F_ekR);
+        unlock 'setup'
+
+let Setup = !(lock 'setup';
+              new k; 
+              insert 'mitb_init',k; 
+              insert 'mitb_resp',k; 
+              event FreshSetup(); unlock 'setup')
+          ||!(lock 'setup'; lookup 'mitb_init' as k in event Corrupt(); in(x); out(mac(k,x)); unlock 'setup')
+          ||!(lock 'setup'; lookup 'mitb_resp' as k in event Corrupt(); in(x); out(mac(k,x)); unlock 'setup')
+    
+!(Setup || Initiator || Responder )
+
+// Post-compromise and Perfect-Fowards-Secrecy
+//
+/* PC_PF_Secrecy (all-traces): verified (7452 steps) */
+/* with branch sapic-integration: 0309f190f6b4bb58b6cd87feffc4cc5acd9429dd */
+lemma PC_PF_Secrecy:
+  "All I R sessKey #i #k. 
+     SessionKey(I,R,sessKey) @ i &
+     K(sessKey) @ k
+     ==>
+     (
+     Ex #c . Corrupt()@c & #c<#i 
+     & (All #f. FreshSetup()@f ==> f < c | i < f)
+     )
+  "
+
+end
+

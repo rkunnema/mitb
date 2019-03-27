@@ -1,0 +1,229 @@
+theory MACedDH_PCS
+begin
+
+functions: rep/2 [private], check_rep/2, get_rep/1
+equations: check_rep(rep(m,loc),loc)=m, get_rep(rep(m,loc))=m
+section{* Diffie-Hellman with MAC-in-the-Box *}
+
+builtins: diffie-hellman
+
+functions: mac/2
+
+heuristic: p /* heuristic for SAPIC */
+
+rule Init_: // [process=top-level] Init 
+ [] --[Init()]-> [State_()]
+
+rule Rep_0_: // [process=top-level] Rep, 0 
+ [State_()] --[]-> [!Semistate_1()]
+
+rule Rep_1_: // [process=top-level] Rep, 1 
+ [!Semistate_1()] --[]-> [State_1()]
+
+rule Par_1: // [process=top-level] Par 
+ [State_1()] --[]-> [State_11(), State_12()]
+
+rule Par_11: // [process=top-level] Par 
+ [State_11()] --[]-> [State_111(), State_112()]
+
+rule Par_111 [color=#569DC0]: // [process=Setup] Par 
+ [State_111()] --[]-> [State_1111(), State_1112()]
+
+rule Par_1111 [color=#569DC0]: // [process=Setup] Par 
+ [State_1111()] --[]-> [State_11111(), State_11112()]
+
+rule Rep_0_11111 [color=#569DC0]: // [process=Setup] Rep, 0 
+ [State_11111()] --[]-> [!Semistate_111111()]
+
+rule Rep_1_11111 [color=#569DC0]: // [process=Setup] Rep, 1 
+ [!Semistate_111111()] --[]-> [State_111111()]
+
+rule lock_setup__111111 [color=#569DC0]: // [process=Setup] lock 'setup' 
+ [State_111111(), Fr(~lock7)] --[Lock($7, ~lock7, 'setup'), Lock_7($7, ~lock7, 'setup')]-> [State_1111111(~lock7)]
+
+rule new_k_1111111 [color=#569DC0]: // [process=Setup] new k 
+ [State_1111111(~lock7), Fr(k)] --[]-> [State_11111111(~lock7, k)]
+
+rule insert_mitb_init_k_11111111 [color=#569DC0]: // [process=Setup] insert 'mitb_init',k 
+ [State_11111111(~lock7, k)] --[Insert('mitb_init', k)]-> [State_111111111(~lock7, k)]
+
+rule insert_mitb_resp_k_111111111 [color=#569DC0]: // [process=Setup] insert 'mitb_resp',k 
+ [State_111111111(~lock7, k)] --[Insert('mitb_resp', k)]-> [State_1111111111(~lock7, k)]
+
+rule event_FreshSetup_1111111111 [color=#569DC0]: // [process=Setup] event FreshSetup() 
+ [State_1111111111(~lock7, k)] --[FreshSetup()]-> [State_11111111111(~lock7, k)]
+
+rule unlock_setup__11111111111 [color=#569DC0]: // [process=Setup] unlock 'setup' 
+ [State_11111111111(~lock7, k)] --[Unlock($7, ~lock7, 'setup'), Unlock_7($7, ~lock7, 'setup')]-> [State_111111111111(~lock7, k)]
+
+rule Zero_111111111111 [color=#569DC0]: // [process=Setup] Zero 
+ [State_111111111111(~lock7, k)] --[]-> []
+
+rule Rep_0_11112 [color=#569DC0]: // [process=Setup] Rep, 0 
+ [State_11112()] --[]-> [!Semistate_111121()]
+
+rule Rep_1_11112 [color=#569DC0]: // [process=Setup] Rep, 1 
+ [!Semistate_111121()] --[]-> [State_111121()]
+
+rule lock_setup__111121 [color=#569DC0]: // [process=Setup] lock 'setup' 
+ [State_111121(), Fr(~lock7)] --[Lock($7, ~lock7, 'setup'), Lock_7($7, ~lock7, 'setup')]-> [State_1111211(~lock7)]
+
+rule lookup_mitb_init_as_k_0_1111211 [color=#569DC0]: // [process=Setup] lookup 'mitb_init' as k, 0 
+ [State_1111211(~lock7)] --[IsIn('mitb_init', k)]-> [State_11112111(~lock7, k)]
+
+rule lookup_mitb_init_as_k_1_1111211 [color=#569DC0]: // [process=Setup] lookup 'mitb_init' as k, 1 
+ [State_1111211(~lock7)] --[IsNotSet('mitb_init')]-> [State_11112112(~lock7)]
+
+rule event_Corrupt_11112111 [color=#569DC0]: // [process=Setup] event Corrupt() 
+ [State_11112111(~lock7, k)] --[Corrupt()]-> [State_111121111(~lock7, k)]
+
+rule in_x_111121111 [color=#569DC0]: // [process=Setup] in x 
+ [State_111121111(~lock7, k), In(x)] --[]-> [State_1111211111(~lock7, k, x)]
+
+rule out_mack_x_1111211111 [color=#569DC0]: // [process=Setup] out mac(k, x) 
+ [State_1111211111(~lock7, k, x)] --[]-> [State_11112111111(~lock7, k, x), Out(mac(k, x))]
+
+rule unlock_setup__11112111111 [color=#569DC0]: // [process=Setup] unlock 'setup' 
+ [State_11112111111(~lock7, k, x)] --[Unlock($7, ~lock7, 'setup'), Unlock_7($7, ~lock7, 'setup')]-> [State_111121111111(~lock7, k, x)]
+
+rule Zero_111121111111 [color=#569DC0]: // [process=Setup] Zero 
+ [State_111121111111(~lock7, k, x)] --[]-> []
+
+rule Zero_11112112 [color=#569DC0]: // [process=Setup] Zero 
+ [State_11112112(~lock7)] --[]-> []
+
+rule Rep_0_1112 [color=#569DC0]: // [process=Setup] Rep, 0 
+ [State_1112()] --[]-> [!Semistate_11121()]
+
+rule Rep_1_1112 [color=#569DC0]: // [process=Setup] Rep, 1 
+ [!Semistate_11121()] --[]-> [State_11121()]
+
+rule lock_setup__11121 [color=#569DC0]: // [process=Setup] lock 'setup' 
+ [State_11121(), Fr(~lock7)] --[Lock($7, ~lock7, 'setup'), Lock_7($7, ~lock7, 'setup')]-> [State_111211(~lock7)]
+
+rule lookup_mitb_resp_as_k_0_111211 [color=#569DC0]: // [process=Setup] lookup 'mitb_resp' as k, 0 
+ [State_111211(~lock7)] --[IsIn('mitb_resp', k)]-> [State_1112111(~lock7, k)]
+
+rule lookup_mitb_resp_as_k_1_111211 [color=#569DC0]: // [process=Setup] lookup 'mitb_resp' as k, 1 
+ [State_111211(~lock7)] --[IsNotSet('mitb_resp')]-> [State_1112112(~lock7)]
+
+rule event_Corrupt_1112111 [color=#569DC0]: // [process=Setup] event Corrupt() 
+ [State_1112111(~lock7, k)] --[Corrupt()]-> [State_11121111(~lock7, k)]
+
+rule in_x_11121111 [color=#569DC0]: // [process=Setup] in x 
+ [State_11121111(~lock7, k), In(x)] --[]-> [State_111211111(~lock7, k, x)]
+
+rule out_mack_x_111211111 [color=#569DC0]: // [process=Setup] out mac(k, x) 
+ [State_111211111(~lock7, k, x)] --[]-> [State_1112111111(~lock7, k, x), Out(mac(k, x))]
+
+rule unlock_setup__1112111111 [color=#569DC0]: // [process=Setup] unlock 'setup' 
+ [State_1112111111(~lock7, k, x)] --[Unlock($7, ~lock7, 'setup'), Unlock_7($7, ~lock7, 'setup')]-> [State_11121111111(~lock7, k, x)]
+
+rule Zero_11121111111 [color=#569DC0]: // [process=Setup] Zero 
+ [State_11121111111(~lock7, k, x)] --[]-> []
+
+rule Zero_1112112 [color=#569DC0]: // [process=Setup] Zero 
+ [State_1112112(~lock7)] --[]-> []
+
+rule lock_setup__112 [color=#2CD719]: // [process=Initiator] lock 'setup' 
+ [State_112(), Fr(~lock9)] --[Lock($9, ~lock9, 'setup'), Lock_9($9, ~lock9, 'setup')]-> [State_1121(~lock9)]
+
+rule lookup_mitb_init_as_k_0_1121 [color=#2CD719]: // [process=Initiator] lookup 'mitb_init' as k, 0 
+ [State_1121(~lock9)] --[IsIn('mitb_init', k)]-> [State_11211(~lock9, k)]
+
+rule lookup_mitb_init_as_k_1_1121 [color=#2CD719]: // [process=Initiator] lookup 'mitb_init' as k, 1 
+ [State_1121(~lock9)] --[IsNotSet('mitb_init')]-> [State_11212(~lock9)]
+
+rule new_F_ekI_11211 [color=#2CD719]: // [process=Initiator] new ~F_ekI 
+ [State_11211(~lock9, k), Fr(~F_ekI)] --[]-> [State_112111(~F_ekI, ~lock9, k)]
+
+rule out_1_I_R__g__F_ekI_mack_1_I_R__g__F_ekI___112111 [color=#2CD719]: // [process=Initiator] out <<'1', $I, $R, ('g') ^ (~F_ekI)>, mac(k, <'1', $I, $R, ('g') ^ (~F_ekI)>)> 
+ [State_112111(~F_ekI, ~lock9, k)] --[]-> [State_1121111($I, $R, ~F_ekI, ~lock9, k), Out(<<'1', $I, $R, ('g') ^ (~F_ekI)>, mac(k, <'1', $I, $R, ('g') ^ (~F_ekI)>)>)]
+
+rule in_2_I_Y_m2m__1121111 [color=#2CD719]: // [process=Initiator] in <<'2', $I, Y>, m2m> 
+ [State_1121111($I, $R, ~F_ekI, ~lock9, k), In(<<'2', $I, Y>, m2m>)] --[]-> [State_11211111($I, $R, ~F_ekI, ~lock9, Y, k, m2m)]
+
+rule if_eqm2m_mack_2_I_Y__0_11211111 [color=#2CD719]: // [process=Initiator] if eq(m2m, mac(k, <'2', $I, Y>)), 0 
+ [State_11211111($I, $R, ~F_ekI, ~lock9, Y, k, m2m)] --[Pred_eq(m2m, mac(k, <'2', $I, Y>))]-> [State_112111111($I, $R, ~F_ekI, ~lock9, Y, k, m2m)]
+
+rule if_eqm2m_mack_2_I_Y__1_11211111 [color=#2CD719]: // [process=Initiator] if eq(m2m, mac(k, <'2', $I, Y>)), 1 
+ [State_11211111($I, $R, ~F_ekI, ~lock9, Y, k, m2m)] --[Pred_not_eq(m2m, mac(k, <'2', $I, Y>))]-> [State_112111112($I, $R, ~F_ekI, ~lock9, Y, k, m2m)]
+
+rule event_SessionKey_I_R_Y_F_ekI_112111111 [color=#2CD719]: // [process=Initiator] event SessionKey($I, $R, (Y) ^ (~F_ekI)) 
+ [State_112111111($I, $R, ~F_ekI, ~lock9, Y, k, m2m)] --[SessionKey($I, $R, (Y) ^ (~F_ekI))]-> [State_1121111111($I, $R, ~F_ekI, ~lock9, Y, k, m2m)]
+
+rule unlock_setup__1121111111 [color=#2CD719]: // [process=Initiator] unlock 'setup' 
+ [State_1121111111($I, $R, ~F_ekI, ~lock9, Y, k, m2m)] --[Unlock($9, ~lock9, 'setup'), Unlock_9($9, ~lock9, 'setup')]-> [State_11211111111($I, $R, ~F_ekI, ~lock9, Y, k, m2m)]
+
+rule Zero_11211111111 [color=#2CD719]: // [process=Initiator] Zero 
+ [State_11211111111($I, $R, ~F_ekI, ~lock9, Y, k, m2m)] --[]-> []
+
+rule Zero_112111112 [color=#2CD719]: // [process=Initiator] Zero 
+ [State_112111112($I, $R, ~F_ekI, ~lock9, Y, k, m2m)] --[]-> []
+
+rule Zero_11212 [color=#2CD719]: // [process=Initiator] Zero 
+ [State_11212(~lock9)] --[]-> []
+
+rule lock_setup__12 [color=#11EC28]: // [process=Responder] lock 'setup' 
+ [State_12(), Fr(~lock9)] --[Lock($9, ~lock9, 'setup'), Lock_9($9, ~lock9, 'setup')]-> [State_121(~lock9)]
+
+rule lookup_mitb_resp_as_k_0_121 [color=#11EC28]: // [process=Responder] lookup 'mitb_resp' as k, 0 
+ [State_121(~lock9)] --[IsIn('mitb_resp', k)]-> [State_1211(~lock9, k)]
+
+rule lookup_mitb_resp_as_k_1_121 [color=#11EC28]: // [process=Responder] lookup 'mitb_resp' as k, 1 
+ [State_121(~lock9)] --[IsNotSet('mitb_resp')]-> [State_1212(~lock9)]
+
+rule new_F_ekR_1211 [color=#11EC28]: // [process=Responder] new ~F_ekR 
+ [State_1211(~lock9, k), Fr(~F_ekR)] --[]-> [State_12111(~F_ekR, ~lock9, k)]
+
+rule in_1_I_R_X_m1m__12111 [color=#11EC28]: // [process=Responder] in <<'1', $I, $R, X>, m1m> 
+ [State_12111(~F_ekR, ~lock9, k), In(<<'1', $I, $R, X>, m1m>)] --[]-> [State_121111($I, $R, ~F_ekR, ~lock9, X, k, m1m)]
+
+rule if_eqm1m_mack_1_I_R_X__0_121111 [color=#11EC28]: // [process=Responder] if eq(m1m, mac(k, <'1', $I, $R, X>)), 0 
+ [State_121111($I, $R, ~F_ekR, ~lock9, X, k, m1m)] --[Pred_eq(m1m, mac(k, <'1', $I, $R, X>))]-> [State_1211111($I, $R, ~F_ekR, ~lock9, X, k, m1m)]
+
+rule if_eqm1m_mack_1_I_R_X__1_121111 [color=#11EC28]: // [process=Responder] if eq(m1m, mac(k, <'1', $I, $R, X>)), 1 
+ [State_121111($I, $R, ~F_ekR, ~lock9, X, k, m1m)] --[Pred_not_eq(m1m, mac(k, <'1', $I, $R, X>))]-> [State_1211112($I, $R, ~F_ekR, ~lock9, X, k, m1m)]
+
+rule out_2_I__g__F_ekR_mack_2_I__g__F_ekR___1211111 [color=#11EC28]: // [process=Responder] out <<'2', $I, ('g') ^ (~F_ekR)>, mac(k, <'2', $I, ('g') ^ (~F_ekR)>)> 
+ [State_1211111($I, $R, ~F_ekR, ~lock9, X, k, m1m)] --[]-> [State_12111111($I, $R, ~F_ekR, ~lock9, X, k, m1m), Out(<<'2', $I, ('g') ^ (~F_ekR)>, mac(k, <'2', $I, ('g') ^ (~F_ekR)>)>)]
+
+rule event_SessionKey_I_R_X_F_ekR_12111111 [color=#11EC28]: // [process=Responder] event SessionKey($I, $R, (X) ^ (~F_ekR)) 
+ [State_12111111($I, $R, ~F_ekR, ~lock9, X, k, m1m)] --[SessionKey($I, $R, (X) ^ (~F_ekR))]-> [State_121111111($I, $R, ~F_ekR, ~lock9, X, k, m1m)]
+
+rule unlock_setup__121111111 [color=#11EC28]: // [process=Responder] unlock 'setup' 
+ [State_121111111($I, $R, ~F_ekR, ~lock9, X, k, m1m)] --[Unlock($9, ~lock9, 'setup'), Unlock_9($9, ~lock9, 'setup')]-> [State_1211111111($I, $R, ~F_ekR, ~lock9, X, k, m1m)]
+
+rule Zero_1211111111 [color=#11EC28]: // [process=Responder] Zero 
+ [State_1211111111($I, $R, ~F_ekR, ~lock9, X, k, m1m)] --[]-> []
+
+rule Zero_1211112 [color=#11EC28]: // [process=Responder] Zero 
+ [State_1211112($I, $R, ~F_ekR, ~lock9, X, k, m1m)] --[]-> []
+
+rule Zero_1212 [color=#11EC28]: // [process=Responder] Zero 
+ [State_1212(~lock9)] --[]-> []
+
+restriction set_in:
+ "(All #t3 x y . ((IsIn(x, y)@#t3 ==> (Ex #t2 . ((Insert(x, y)@#t2 & (#t2 < #t3 & (All #t1 yp . ((Insert(x, yp)@#t1 ==> (#t1 < #t2 | (#t1 = #t2 | #t3 < #t1))))))))))))"
+
+restriction set_notin:
+ "(All #t3 x . ((IsNotSet(x)@#t3 ==> (All #t1 y . ((Insert(x, y)@#t1 ==> #t3 < #t1))))))"
+
+restriction locking_7:
+ "(All #t1 #t3 l lp p pp x . (((Lock_7(p, l, x)@#t1 & Lock(pp, lp, x)@#t3) ==> ((#t1 < #t3 & (Ex #t2 . ((Unlock_7(p, l, x)@#t2 & (#t1 < #t2 & (#t2 < #t3 & ((All #t0 pp . ((Unlock(pp, l, x)@#t0 ==> #t0 = #t2))) & ((All #t0 lpp pp . ((Lock(pp, lpp, x)@#t0 ==> (#t0 < #t1 | (#t0 = #t1 | #t2 < #t0))))) & (All #t0 lpp pp . ((Unlock(pp, lpp, x)@#t0 ==> (#t0 < #t1 | (#t2 < #t0 | #t2 = #t0))))))))))))) | (#t3 < #t1 | #t1 = #t3)))))"
+
+restriction locking_9:
+ "(All #t1 #t3 l lp p pp x . (((Lock_9(p, l, x)@#t1 & Lock(pp, lp, x)@#t3) ==> ((#t1 < #t3 & (Ex #t2 . ((Unlock_9(p, l, x)@#t2 & (#t1 < #t2 & (#t2 < #t3 & ((All #t0 pp . ((Unlock(pp, l, x)@#t0 ==> #t0 = #t2))) & ((All #t0 lpp pp . ((Lock(pp, lpp, x)@#t0 ==> (#t0 < #t1 | (#t0 = #t1 | #t2 < #t0))))) & (All #t0 lpp pp . ((Unlock(pp, lpp, x)@#t0 ==> (#t0 < #t1 | (#t2 < #t0 | #t2 = #t0))))))))))))) | (#t3 < #t1 | #t1 = #t3)))))"
+
+restriction immeadiate_in:
+ "(All #i a b . ((Pred_eq(a, b)@#i ==> a = b)))"
+
+restriction predicate_not_eq:
+ "(All #i a b . ((Pred_not_eq(a, b)@#i ==> not(a = b))))"
+
+restriction single_session:
+ "(All #i #j . (((Init()@#i & Init()@#j) ==> #i = #j)))"
+lemma PC_PF_Secrecy :
+ all-traces
+"(All #i #k I R sessKey . (((SessionKey(I, R, sessKey)@#i & K(sessKey)@#k) ==> (Ex #c . ((Corrupt()@#c & (#c < #i & (All #f . ((FreshSetup()@#f ==> (#f < #c | #i < #f)))))))))))"
+end

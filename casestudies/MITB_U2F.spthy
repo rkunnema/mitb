@@ -1,0 +1,200 @@
+theory MITB_U2F
+begin
+
+functions: rep/2 [private], check_rep/2, get_rep/1
+equations: check_rep(rep(m,loc),loc)=m, get_rep(rep(m,loc))=m
+section{* U2F with MITB as second factor *}
+
+functions: mac/2, h/2, tls/2[private]
+
+heuristic: p /* heuristic for SAPIC */
+
+rule Init_: // [process=top-level] Init 
+ [] --[Init()]-> [State_()]
+
+rule Par_: // [process=top-level] Par 
+ [State_()] --[]-> [State_1(), State_2()]
+
+rule Rep_0_1: // [process=top-level] Rep, 0 
+ [State_1()] --[]-> [!Semistate_11()]
+
+rule Rep_1_1: // [process=top-level] Rep, 1 
+ [!Semistate_11()] --[]-> [State_11()]
+
+rule in_login_password__11 [color=#569DC0]: // [process=Server] in <login, password> 
+ [State_11(), In(<login, password>)] --[]-> [State_111(login, password)]
+
+rule in_url_111 [color=#569DC0]: // [process=Server] in url 
+ [State_111(login, password), In(url)] --[]-> [State_1111(login, password, url)]
+
+rule in_tls_session_1111 [color=#569DC0]: // [process=Server] in tls_session 
+ [State_1111(login, password, url), In(tls_session)] --[]-> [State_11111(login, password, tls_session, url)]
+
+rule in_handle_11111 [color=#569DC0]: // [process=Server] in $handle 
+ [State_11111(login, password, tls_session, url), In($handle)] --[]-> [State_111111($handle, login, password, tls_session, url)]
+
+rule lookup_F_Server_login_handle_as_entry_0_111111 [color=#569DC0]: // [process=Server] lookup <'F_Server', login, $handle> as entry, 0 
+ [State_111111($handle, login, password, tls_session, url)] --[IsIn(<'F_Server', login, $handle>, entry)]-> [State_1111111($handle, entry, login, password, tls_session, url)]
+
+rule lookup_F_Server_login_handle_as_entry_1_111111 [color=#569DC0]: // [process=Server] lookup <'F_Server', login, $handle> as entry, 1 
+ [State_111111($handle, login, password, tls_session, url)] --[IsNotSet(<'F_Server', login, $handle>)]-> [State_1111112($handle, login, password, tls_session, url)]
+
+rule out_fstentry_1111111 [color=#569DC0]: // [process=Server] out fst(entry) 
+ [State_1111111($handle, entry, login, password, tls_session, url)] --[]-> [State_11111111($handle, entry, login, password, tls_session, url), Out(fst(entry))]
+
+rule in_xsignature_11111111 [color=#569DC0]: // [process=Server] in xsignature 
+ [State_11111111($handle, entry, login, password, tls_session, url), In(xsignature)] --[]-> [State_111111111($handle, entry, login, password, tls_session, url, xsignature)]
+
+rule if_eqxsignature_h_fstentry_url_tls_session_sndentry_0_111111111 [color=#569DC0]: // [process=Server] if eq(xsignature, h(<fst(entry), url, tls_session>, snd(entry))), 0 
+ [State_111111111($handle, entry, login, password, tls_session, url, xsignature)] --[Pred_eq(xsignature, h(<fst(entry), url, tls_session>, snd(entry)))]-> [State_1111111111($handle, entry, login, password, tls_session, url, xsignature)]
+
+rule if_eqxsignature_h_fstentry_url_tls_session_sndentry_1_111111111 [color=#569DC0]: // [process=Server] if eq(xsignature, h(<fst(entry), url, tls_session>, snd(entry))), 1 
+ [State_111111111($handle, entry, login, password, tls_session, url, xsignature)] --[Pred_not_eq(xsignature, h(<fst(entry), url, tls_session>, snd(entry)))]-> [State_1111111112($handle, entry, login, password, tls_session, url, xsignature)]
+
+rule delete_F_Server_login_handle__1111111111 [color=#569DC0]: // [process=Server] delete <'F_Server', login, $handle> 
+ [State_1111111111($handle, entry, login, password, tls_session, url, xsignature)] --[Delete(<'F_Server', login, $handle>)]-> [State_11111111111($handle, entry, login, password, tls_session, url, xsignature)]
+
+rule event_Accesslogin_url_tls_session_fstentry_11111111111 [color=#569DC0]: // [process=Server] event Access(login, url, tls_session, fst(entry)) 
+ [State_11111111111($handle, entry, login, password, tls_session, url, xsignature)] --[Access(login, url, tls_session, fst(entry))]-> [State_111111111111($handle, entry, login, password, tls_session, url, xsignature)]
+
+rule event_Checkpoint_111111111111 [color=#569DC0]: // [process=Server] event Checkpoint() 
+ [State_111111111111($handle, entry, login, password, tls_session, url, xsignature)] --[Checkpoint()]-> [State_1111111111111($handle, entry, login, password, tls_session, url, xsignature)]
+
+rule Zero_1111111111111 [color=#569DC0]: // [process=Server] Zero 
+ [State_1111111111111($handle, entry, login, password, tls_session, url, xsignature)] --[]-> []
+
+rule Zero_1111111112 [color=#569DC0]: // [process=Server] Zero 
+ [State_1111111112($handle, entry, login, password, tls_session, url, xsignature)] --[]-> []
+
+rule Zero_1111112 [color=#569DC0]: // [process=Server] Zero 
+ [State_1111112($handle, login, password, tls_session, url)] --[]-> []
+
+rule Rep_0_2: // [process=top-level] Rep, 0 
+ [State_2()] --[]-> [!Semistate_21()]
+
+rule Rep_1_2: // [process=top-level] Rep, 1 
+ [!Semistate_21()] --[]-> [State_21()]
+
+rule new_k_21: // [process=top-level] new k 
+ [State_21(), Fr(k)] --[]-> [State_211(k)]
+
+rule Rep_0_211: // [process=top-level] Rep, 0 
+ [State_211(k)] --[]-> [!Semistate_2111(k)]
+
+rule Rep_1_211: // [process=top-level] Rep, 1 
+ [!Semistate_2111(k)] --[]-> [State_2111(k)]
+
+rule new_login_2111 [color=#2CD719]: // [process=User] new login 
+ [State_2111(k), Fr(login)] --[]-> [State_21111(k, login)]
+
+rule new_password_21111 [color=#2CD719]: // [process=User] new password 
+ [State_21111(k, login), Fr(password)] --[]-> [State_211111(k, login, password)]
+
+rule Par_211111 [color=#2CD719]: // [process=User] Par 
+ [State_211111(k, login, password)] --[]-> [State_2111111(k, login, password), State_2111112(k, login, password)]
+
+rule Par_2111111 [color=#2CD719]: // [process=User] Par 
+ [State_2111111(k, login, password)] --[]-> [State_21111111(k, login, password), State_21111112(k, login, password)]
+
+rule Rep_0_21111111 [color=#2CD719]: // [process=User] Rep, 0 
+ [State_21111111(k, login, password)] --[]-> [!Semistate_211111111(k, login, password)]
+
+rule Rep_1_21111111 [color=#2CD719]: // [process=User] Rep, 1 
+ [!Semistate_211111111(k, login, password)] --[]-> [State_211111111(k, login, password)]
+
+rule lock_setup__211111111 [color=#2CD719]: // [process=User] lock 'setup' 
+ [State_211111111(k, login, password), Fr(~lock7)] --[Lock($7, ~lock7, 'setup'), Lock_7($7, ~lock7, 'setup')]-> [State_2111111111(~lock7, k, login, password)]
+
+rule in_handle_2111111111 [color=#2CD719]: // [process=User] in $handle 
+ [State_2111111111(~lock7, k, login, password), In($handle)] --[]-> [State_21111111111($handle, ~lock7, k, login, password)]
+
+rule new_challenge_21111111111 [color=#2CD719]: // [process=User] new challenge 
+ [State_21111111111($handle, ~lock7, k, login, password), Fr(challenge)] --[]-> [State_211111111111($handle, ~lock7, challenge, k, login, password)]
+
+rule event_FreshSetupchallenge_211111111111 [color=#2CD719]: // [process=User] event FreshSetup(challenge) 
+ [State_211111111111($handle, ~lock7, challenge, k, login, password)] --[FreshSetup(challenge)]-> [State_2111111111111($handle, ~lock7, challenge, k, login, password)]
+
+rule insert_F_Server_login_handle_challenge_mack_F_Server_login_password_challenge___2111111111111 [color=#2CD719]: // [process=User] insert <'F_Server', login, $handle>,<challenge, mac(k, <'F_Server', login, password, challenge>)> 
+ [State_2111111111111($handle, ~lock7, challenge, k, login, password)] --[Insert(<'F_Server', login, $handle>, <challenge, mac(k, <'F_Server', login, password, challenge>)>)]-> [State_21111111111111($handle, ~lock7, challenge, k, login, password)]
+
+rule unlock_setup__21111111111111 [color=#2CD719]: // [process=User] unlock 'setup' 
+ [State_21111111111111($handle, ~lock7, challenge, k, login, password)] --[Unlock($7, ~lock7, 'setup'), Unlock_7($7, ~lock7, 'setup')]-> [State_211111111111111($handle, ~lock7, challenge, k, login, password)]
+
+rule Zero_211111111111111 [color=#2CD719]: // [process=User] Zero 
+ [State_211111111111111($handle, ~lock7, challenge, k, login, password)] --[]-> []
+
+rule Rep_0_21111112 [color=#2CD719]: // [process=User] Rep, 0 
+ [State_21111112(k, login, password)] --[]-> [!Semistate_211111121(k, login, password)]
+
+rule Rep_1_21111112 [color=#2CD719]: // [process=User] Rep, 1 
+ [!Semistate_211111121(k, login, password)] --[]-> [State_211111121(k, login, password)]
+
+rule in_url_211111121 [color=#11EC28]: // [process=User_auth] in url 
+ [State_211111121(k, login, password), In(url)] --[]-> [State_2111111211(k, login, password, url)]
+
+rule in_tls_session_2111111211 [color=#11EC28]: // [process=User_auth] in tls_session 
+ [State_2111111211(k, login, password, url), In(tls_session)] --[]-> [State_21111112111(k, login, password, tls_session, url)]
+
+rule event_Requestlogin_url_tls_session_21111112111 [color=#11EC28]: // [process=User_auth] event Request(login, url, tls_session) 
+ [State_21111112111(k, login, password, tls_session, url)] --[Request(login, url, tls_session)]-> [State_211111121111(k, login, password, tls_session, url)]
+
+rule out_login_password__211111121111 [color=#11EC28]: // [process=User_auth] out <login, password> 
+ [State_211111121111(k, login, password, tls_session, url)] --[]-> [State_2111111211111(k, login, password, tls_session, url), Out(<login, password>)]
+
+rule in_challenge_2111111211111 [color=#11EC28]: // [process=User_auth] in challenge 
+ [State_2111111211111(k, login, password, tls_session, url), In(challenge)] --[]-> [State_21111112111111(challenge, k, login, password, tls_session, url)]
+
+rule out_h_challenge_url_tls_session_mack_Server_login_password_challenge__21111112111111 [color=#11EC28]: // [process=User_auth] out h(<challenge, url, tls_session>, mac(k, <'Server', login, password, challenge>)) 
+ [State_21111112111111(challenge, k, login, password, tls_session, url)] --[]-> [State_211111121111111(challenge, k, login, password, tls_session, url), Out(h(<challenge, url, tls_session>, mac(k, <'Server', login, password, challenge>)))]
+
+rule Zero_211111121111111 [color=#11EC28]: // [process=User_auth] Zero 
+ [State_211111121111111(challenge, k, login, password, tls_session, url)] --[]-> []
+
+rule Rep_0_2111112 [color=#2CD719]: // [process=User] Rep, 0 
+ [State_2111112(k, login, password)] --[]-> [!Semistate_21111121(k, login, password)]
+
+rule Rep_1_2111112 [color=#2CD719]: // [process=User] Rep, 1 
+ [!Semistate_21111121(k, login, password)] --[]-> [State_21111121(k, login, password)]
+
+rule lock_setup__21111121 [color=#45D1E2]: // [process=User_corrupt] lock 'setup' 
+ [State_21111121(k, login, password), Fr(~lock6)] --[Lock($6, ~lock6, 'setup'), Lock_6($6, ~lock6, 'setup')]-> [State_211111211(~lock6, k, login, password)]
+
+rule event_Corrupt_211111211 [color=#45D1E2]: // [process=User_corrupt] event Corrupt() 
+ [State_211111211(~lock6, k, login, password)] --[Corrupt()]-> [State_2111112111(~lock6, k, login, password)]
+
+rule in_x_2111112111 [color=#45D1E2]: // [process=User_corrupt] in x 
+ [State_2111112111(~lock6, k, login, password), In(x)] --[]-> [State_21111121111(~lock6, k, login, password, x)]
+
+rule out_mack_x_21111121111 [color=#45D1E2]: // [process=User_corrupt] out mac(k, x) 
+ [State_21111121111(~lock6, k, login, password, x)] --[]-> [State_211111211111(~lock6, k, login, password, x), Out(mac(k, x))]
+
+rule unlock_setup__211111211111 [color=#45D1E2]: // [process=User_corrupt] unlock 'setup' 
+ [State_211111211111(~lock6, k, login, password, x)] --[Unlock($6, ~lock6, 'setup'), Unlock_6($6, ~lock6, 'setup')]-> [State_2111112111111(~lock6, k, login, password, x)]
+
+rule Zero_2111112111111 [color=#45D1E2]: // [process=User_corrupt] Zero 
+ [State_2111112111111(~lock6, k, login, password, x)] --[]-> []
+
+restriction set_in:
+ "(All #t3 x y . ((IsIn(x, y)@#t3 ==> (Ex #t2 . ((Insert(x, y)@#t2 & (#t2 < #t3 & ((All #t1 . ((Delete(x)@#t1 ==> (#t1 < #t2 | #t3 < #t1)))) & (All #t1 yp . ((Insert(x, yp)@#t1 ==> (#t1 < #t2 | (#t1 = #t2 | #t3 < #t1)))))))))))))"
+
+restriction set_notin:
+ "(All #t3 x . ((IsNotSet(x)@#t3 ==> ((All #t1 y . ((Insert(x, y)@#t1 ==> #t3 < #t1))) | (Ex #t1 . ((Delete(x)@#t1 & (#t1 < #t3 & (All #t2 y . (((Insert(x, y)@#t2 & #t2 < #t3) ==> #t2 < #t1)))))))))))"
+
+restriction locking_7:
+ "(All #t1 #t3 l lp p pp x . (((Lock_7(p, l, x)@#t1 & Lock(pp, lp, x)@#t3) ==> ((#t1 < #t3 & (Ex #t2 . ((Unlock_7(p, l, x)@#t2 & (#t1 < #t2 & (#t2 < #t3 & ((All #t0 pp . ((Unlock(pp, l, x)@#t0 ==> #t0 = #t2))) & ((All #t0 lpp pp . ((Lock(pp, lpp, x)@#t0 ==> (#t0 < #t1 | (#t0 = #t1 | #t2 < #t0))))) & (All #t0 lpp pp . ((Unlock(pp, lpp, x)@#t0 ==> (#t0 < #t1 | (#t2 < #t0 | #t2 = #t0))))))))))))) | (#t3 < #t1 | #t1 = #t3)))))"
+
+restriction locking_6:
+ "(All #t1 #t3 l lp p pp x . (((Lock_6(p, l, x)@#t1 & Lock(pp, lp, x)@#t3) ==> ((#t1 < #t3 & (Ex #t2 . ((Unlock_6(p, l, x)@#t2 & (#t1 < #t2 & (#t2 < #t3 & ((All #t0 pp . ((Unlock(pp, l, x)@#t0 ==> #t0 = #t2))) & ((All #t0 lpp pp . ((Lock(pp, lpp, x)@#t0 ==> (#t0 < #t1 | (#t0 = #t1 | #t2 < #t0))))) & (All #t0 lpp pp . ((Unlock(pp, lpp, x)@#t0 ==> (#t0 < #t1 | (#t2 < #t0 | #t2 = #t0))))))))))))) | (#t3 < #t1 | #t1 = #t3)))))"
+
+restriction immeadiate_in:
+ "(All #i a b . ((Pred_eq(a, b)@#i ==> a = b)))"
+
+restriction predicate_not_eq:
+ "(All #i a b . ((Pred_not_eq(a, b)@#i ==> not(a = b))))"
+
+restriction single_session:
+ "(All #i #j . (((Init()@#i & Init()@#j) ==> #i = #j)))"
+lemma PC_PF_Secrecy :
+ all-traces
+"(All #a challenge login tls_session url . ((Access(login, url, tls_session, challenge)@#a ==> ((Ex #r . (Request(login, url, tls_session)@#r)) | (Ex #c #f . ((Corrupt()@#c & (#c < #a & (FreshSetup(challenge)@#f & #f < #c)))))))))"
+end

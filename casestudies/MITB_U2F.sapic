@@ -1,0 +1,125 @@
+theory MITB_U2F
+begin
+
+section{* U2F with MITB as second factor *}
+
+/*
+ * Modeler: 	Robert Kunnemann
+ * Source: 	Adapted from https://gitlab.inria.fr/cjacomme/multi-factor-authentication-proverif-examples/blob/master/login-protocols-trust/U2F
+ * Date: 	Dec 2018
+ *
+ * Status: 	incomplete
+ */
+
+/*
+Processes:
+ P = the user platform (its laptop)
+ S = the webserver
+ Key = the user FIDO key
+ H = minimal modelisation of the human
+ TLS_manager = modelling of TLS behaviors
+
+Protocol with second factor:
+ H->P: (server urls,login, password)
+ P->S: (login,password, TLS session id)
+ S->P: (challenge, TLS session id)
+ P->Key: (challenge, server url, TLS session id)
+ Key->H: (confirm ?)
+ H->Key: (yes !)
+ Key->P: (signature)
+ P->S: (signature)
+*/
+
+/* builtins: */ 
+
+functions: mac/2, h/2, tls/2 [private]
+
+let User_auth =
+    let
+        m1 = <login,password>
+        mac = mac(k,<'Server',login,password,challenge>)
+        m3 = <challenge,url,tls_session>
+        signature = h(m3,mac(k,<'Server',login,password,challenge>))
+    in
+    in(url);
+    in(tls_session);
+    event Request(login,url,tls_session);
+    /* out(tls('Server',tls_session),m1); */
+    /* in (tls('Server',tls_session),challenge); */
+    /* out (tls('Server',tls_session),signature) */
+    out(m1);
+    in (challenge);
+    out (signature)
+
+let User_corrupt = 
+    lock 'setup'; 
+    event Corrupt(); 
+    in(x); 
+    out(mac(k,x)); 
+    unlock 'setup'
+
+let User = 
+    new login; new password;
+    (
+    !(
+        lock 'setup';
+        in($handle);
+        new challenge;
+        event FreshSetup(challenge);
+        insert <'F_Server',login,$handle>, <challenge,mac(k,<'F_Server',login,password,challenge>)>;
+        unlock 'setup'
+      )
+    ||
+    ! User_auth
+    ||
+    ! User_corrupt
+    )
+    
+let Server = 
+    let
+        m1 = <login,password>
+        challenge = fst(entry)
+        mac = snd(entry)
+        m3 = <challenge,url,tls_session>
+    in
+    /* in(tls('Server',tls_session),m1); */
+    in(m1);
+    in(url);
+    in(tls_session);
+    in($handle); // adversary decides which pre-agreed password we use
+    lookup <'F_Server',login,$handle> as entry in
+        /* out(tls('Server',tls_session),challenge); */
+        /* in(tls('Server',tls_session),xsignature); */
+        out(challenge);
+        in(xsignature);
+        if xsignature = h(m3,mac) then
+            delete <'F_Server',login,$handle>;
+            event Access(login,url,tls_session,challenge);
+            event Checkpoint()
+
+!Server || !(new k; !User)
+
+
+/* Sanity (exists-trace): verified (16 steps) */
+/* lemma Sanity: */
+/*     exists-trace */
+/*     "Ex #i. Checkpoint()@i" */
+
+// Post-compromise and Perfect-Fowards-Secrecy
+/* PC_PF_Secrecy (all-traces): verified (49 steps) */
+lemma PC_PF_Secrecy:
+  "All login url tls_session challenge #a.
+     Access(login,url,tls_session,challenge) @ a 
+     ==>
+     (Ex #r.
+         Request(login,url,tls_session) @ r )
+     |   
+     (
+     Ex #c #f. 
+         Corrupt()@c & #c<#a 
+     &   FreshSetup(challenge)@f
+     &   #f < #c
+     )
+  "
+
+end

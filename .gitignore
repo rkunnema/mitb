@@ -1,0 +1,23 @@
+# HOL
+*Script
+*Theory.sig
+*Theory.sml
+*.uo
+*.ui
+*.o
+.HOLMK
+*heap
+.hollogs/
+*.dat
+
+# translator
+*_ast.txt
+*_hol.txt
+*_ml.txt
+*_thm.txt
+
+# mac os stuff
+.DS_Store
+
+# robert's stuff
+tags
